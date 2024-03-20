@@ -36,7 +36,7 @@ class FileType(Enum):
     SUBTITLES = 1
     
 def determine_file_type(file):
-    if file.endswith('.mkv'):
+    if file.endswith('.mkv') or file.endswith('.avi'):
         return FileType.VIDEO
     elif file.endswith('.srt') or file.endswith('.ass'):
         return FileType.SUBTITLES
