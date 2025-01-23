@@ -22,7 +22,7 @@ def request(url, params=None):
         url = url + '?' + urlencode(params)
     return requests.get(url).json()
 
-def search_show(query, year=None, language=None):
+def search_show(query, year=None):
     params = TMDB_PARAMS.copy()
     params['query'] = query
     if year is not None:
@@ -40,7 +40,7 @@ def load_epsides_info(show_id):
         season_map[str(season.get('season_number', 0))] = season_info
     episode_list = []
     show_info['seasons'] = []
-    for key, value in season_map.items():
+    for _, value in season_map.items():
         show_info['seasons'].append(value)
     for season in show_info.get('seasons', []):
         episode_list.extend(season.get('episodes', []))
