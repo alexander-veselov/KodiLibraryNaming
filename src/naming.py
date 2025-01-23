@@ -3,33 +3,9 @@ import os
 import argparse
 import codecs
 import chardet
-import re
 
 from enum import Enum
-
-def is_directory(string):
-    if os.path.isdir(string):
-        return string
-    else:
-        raise NotADirectoryError(string)
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Unifies TV series files for Kodi'
-    )
-    parser.add_argument('--path', type=is_directory, required=True)
-    parser.add_argument('--season', type=int, required=False, default=1)
-    parser.add_argument('--start_episode', type=int, required=False, default=1)
-    return parser.parse_args()
-    
-def list_files(path):
-    return [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-
-def atoi(text):
-    return int(text) if text.isdigit() else text
-
-def natural_keys(text):
-    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+from utils import list_files, is_directory, natural_keys, input_confirmation
     
 class FileType(Enum):
     VIDEO = 0
@@ -77,9 +53,6 @@ def determine_encoding(filepath):
         else:
             raise NotImplementedError('Unexpected encoding {0} (confidence: {1})'
                 .format(result['encoding'], result['confidence']))
-        
-def input_confirmation(message):
-    return input(message + ' [y/n]: ').lower() == 'y'
     
 def process_encodings(subtitles):
     encodings = dict()
@@ -95,7 +68,7 @@ def process_encodings(subtitles):
             for file, encoding in encodings.items():
                 change_encoding(file, encoding, 'utf-8')
 
-def rename_files(files, season, start_episode):
+def rename_files(files, season, start_episode, interactive):
     if len(files) == 0:
         return
     rename_candidates = dict()
@@ -111,16 +84,15 @@ def rename_files(files, season, start_episode):
         return
     for filepath, new_filepath in rename_candidates.items():
         print('"{0}"\t=>\t"{1}"'.format(filepath, new_filepath))
-    if input_confirmation('Confirm rename'):
+    if not interactive or input_confirmation('Confirm rename'):
         for filepath, new_filepath in rename_candidates.items():
             os.rename(filepath, new_filepath)
 
-def main():
-    args = parse_args()
+def rename_tv_show_files(path, season, start_episode, interactive):
     files = {}
     for file_type in FileType:
         files[file_type] = []
-    for file in list_files(args.path):
+    for file in list_files(path):
         file_type = determine_file_type(file)
         files[file_type].append(file)
     for file_type in FileType:
@@ -132,8 +104,19 @@ def main():
             return 1
         process_encodings(files[FileType.SUBTITLES])
     for file_type in FileType:
-        rename_files(files[file_type], args.season, args.start_episode)
+        rename_files(files[file_type], season, start_episode, interactive)
     return 0
+
+def main(args):
+    return rename_tv_show_files(args.path, args.season, args.start_episode, not args.auto_confirm)
     
 if __name__ == '__main__':
-    sys.exit(main())
+    parser = argparse.ArgumentParser(
+        description='Unifies TV series files for Kodi'
+    )
+    parser.add_argument('--path', type=is_directory, required=True)
+    parser.add_argument('--season', type=int, required=False, default=1)
+    parser.add_argument('--start_episode', type=int, required=False, default=1)
+    parser.add_argument('--auto_confirm', action='store_true')
+    args = parser.parse_args()
+    sys.exit(main(args))

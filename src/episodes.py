@@ -9,14 +9,6 @@ SHOW_URL = BASE_URL.format('tv/{}')
 SEASON_URL = BASE_URL.format('tv/{}/season/{}')
 TMDB_PARAMS = {'api_key': 'f090bb54758cabf231fb605d3e3e0468'}
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Shows series information from TBDB'
-    )
-    parser.add_argument('--name', type=str, required=True)
-    parser.add_argument('--year', type=int, required=False, default=0)
-    return parser.parse_args()
-
 def request(url, params=None):
     if params:
         url = url + '?' + urlencode(params)
@@ -46,8 +38,8 @@ def load_epsides_info(show_id):
         episode_list.extend(season.get('episodes', []))
     return episode_list
 
-def show_episodes(name, year):
-    response = search_show(name, year)
+def main(args):
+    response = search_show(args.name, args.year)
     results = response['results']
     results_count = len(results)
     if results_count == 0:
@@ -66,11 +58,13 @@ def show_episodes(name, year):
             episode_number = episode['episode_number']
             season_number = episode['season_number']
             print('S{}E{}: {}'.format(season_number, episode_number, episode_name))
-
-def main():
-    args = parse_args()
-    show_episodes(args.name, args.year)
     return 0
     
 if __name__ == '__main__':
-    sys.exit(main())
+    parser = argparse.ArgumentParser(
+        description='Shows series information from TBDB'
+    )
+    parser.add_argument('--name', type=str, required=True)
+    parser.add_argument('--year', type=int, required=False, default=0)
+    args = parser.parse_args()
+    sys.exit(main(args))
