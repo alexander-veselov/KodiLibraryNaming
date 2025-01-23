@@ -19,7 +19,7 @@ def parse_args():
     )
     parser.add_argument('--path', type=is_directory, required=True)
     parser.add_argument('--season', type=int, required=False, default=1)
-    parser.add_argument('--episode_zero', action=argparse.BooleanOptionalAction)
+    parser.add_argument('--start_episode', type=int, required=False, default=1)
     return parser.parse_args()
     
 def list_files(path):
@@ -36,9 +36,29 @@ class FileType(Enum):
     SUBTITLES = 1
     
 def determine_file_type(file):
-    if file.endswith('.mkv') or file.endswith('.avi'):
+    VIDEO_FORMATS = [
+        '.mkv',
+        '.avi',
+        '.mp4',
+        '.mov',
+        '.wmv',
+        '.avchd',
+        '.webm',
+        '.flv'
+    ]
+    SUBTITLE_FORMATS = [
+        '.srt',
+        '.ass',
+        '.sub',
+        '.vtt',
+        '.ssa',
+        '.smi'
+    ]
+    _, extension = os.path.splitext(file)
+    extension = extension.lower()
+    if extension in VIDEO_FORMATS:
         return FileType.VIDEO
-    elif file.endswith('.srt') or file.endswith('.ass'):
+    elif extension in SUBTITLE_FORMATS:
         return FileType.SUBTITLES
     else:
         raise NotImplementedError()
@@ -59,36 +79,36 @@ def determine_encoding(filepath):
                 .format(result['encoding'], result['confidence']))
         
 def input_confirmation(message):
-    return input(message + ' [y/n]: ') == 'y'
+    return input(message + ' [y/n]: ').lower() == 'y'
     
 def process_encodings(subtitles):
     encodings = dict()
     for subtitles_file in subtitles:
-        encoding = determine_encoding(subtitles_file)
+        encoding = determine_encoding(subtitles_file).lower()
         encodings[subtitles_file] = encoding
-
-    print('Subtitle files were detected, and their encoding type was determined')
-    
     utf8_files_count = list(encodings.values()).count('utf-8')
-    if utf8_files_count != len(encodings.values()):
+    utf8_sig_files_count = list(encodings.values()).count('utf-8-sig')
+    if utf8_files_count + utf8_sig_files_count != len(encodings.values()):
         for file, encoding in encodings.items():
             print('"{0}" [{1}]'.format(file, encoding))
         if input_confirmation('The encoding is different from UTF-8. Convert these files to UTF-8?'):
             for file, encoding in encodings.items():
                 change_encoding(file, encoding, 'utf-8')
-    else:
-        print('All files are UTF-8')
 
-def rename_files(files, files_type, season, episode_zero):
-    if len(files[files_type]) == 0:
+def rename_files(files, season, start_episode):
+    if len(files) == 0:
         return
     rename_candidates = dict()
-    _, ext = os.path.splitext(files[files_type][0])
+    _, ext = os.path.splitext(files[0])
     season_label = 'S' + str(season)
-    for number, file in enumerate(files[files_type]):
+    for number, file in enumerate(files):
         dirname = os.path.dirname(file)
-        new_filename = season_label + 'E' + str(number + (0 if episode_zero else 1)) + ext
-        rename_candidates[file] = os.path.join(dirname, new_filename)
+        new_filename = season_label + 'E' + str(start_episode + number) + ext
+        new_path = os.path.join(dirname, new_filename)
+        if file != new_path:
+            rename_candidates[file] = new_path
+    if len(rename_candidates) == 0:
+        return
     for filepath, new_filepath in rename_candidates.items():
         print('"{0}"\t=>\t"{1}"'.format(filepath, new_filepath))
     if input_confirmation('Confirm rename'):
@@ -98,21 +118,21 @@ def rename_files(files, files_type, season, episode_zero):
 def main():
     args = parse_args()
     files = {}
-    files[FileType.VIDEO] = []
-    files[FileType.SUBTITLES] = []
-    for file in list_files(path = args.path):
+    for file_type in FileType:
+        files[file_type] = []
+    for file in list_files(args.path):
         file_type = determine_file_type(file)
         files[file_type].append(file)
-    files[FileType.VIDEO].sort(key=natural_keys)
-    files[FileType.SUBTITLES].sort(key=natural_keys)
+    for file_type in FileType:
+        files[file_type].sort(key=natural_keys)
     subtitles_exist = len(files[FileType.SUBTITLES]) != 0
     if subtitles_exist:
         if len(files[FileType.VIDEO]) != len(files[FileType.SUBTITLES]):
-            print('Numbers of videos and subtitles are different')
+            print('The number of videos and subtitles are different')
             return 1
         process_encodings(files[FileType.SUBTITLES])
-    rename_files(files, FileType.VIDEO, args.season, args.episode_zero)
-    rename_files(files, FileType.SUBTITLES, args.season, args.episode_zero)
+    for file_type in FileType:
+        rename_files(files[file_type], args.season, args.start_episode)
     return 0
     
 if __name__ == '__main__':
