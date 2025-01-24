@@ -1,5 +1,31 @@
 import os
 import re
+import sys
+
+from datetime import datetime
+
+class LogsTee():
+    def __init__(self, name, mode='a+'):
+        self.file = open(name, mode)
+        self.stdout = sys.stdout
+    
+    def __enter__(self):
+        sys.stdout = self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout = self.stdout
+        self.file.close()
+
+    def write(self, data):
+        self.file.write(data)
+        self.stdout.write(data)
+
+    def flush(self):
+        self.file.flush()
+
+def get_logs_filename():
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    return f"logs_{timestamp}.txt"
 
 def is_directory(string):
     if os.path.isdir(string):
@@ -30,3 +56,7 @@ def input_positive_number(message):
         print('Invalid input. ', end='')
         user_input = input(message)
     return int(user_input)
+
+def ensure_exists(path):
+    if not os.path.exists(path):
+        os.mkdir(path)

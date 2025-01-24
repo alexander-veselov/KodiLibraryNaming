@@ -3,7 +3,7 @@ import re
 import sys
 import argparse
 
-from utils import is_directory, list_directories, input_positive_number
+from utils import is_directory, list_directories, input_positive_number, get_logs_filename, ensure_exists, LogsTee
 from naming import rename_tv_show_files
 
 TV_SHOWS_FOLDER = 'TV Shows'
@@ -29,8 +29,10 @@ def update_cache(app_folder_path, tv_shows):
 
 def main(args):
     app_folder_path = os.path.join(args.library_path, APP_FOLDER)
-    if not os.path.exists(app_folder_path):
-        os.mkdir(app_folder_path)
+    logs_path = os.path.join(app_folder_path, LOGS_FOLDER)
+    ensure_exists(app_folder_path)
+    ensure_exists(logs_path)
+    logs_filename = os.path.join(logs_path, get_logs_filename())
     cache = read_cache(app_folder_path)
     tv_shows_path = os.path.normpath(os.path.join(args.library_path, TV_SHOWS_FOLDER))
     tv_show_paths = list_directories(tv_shows_path)
@@ -54,7 +56,8 @@ def main(args):
             if args.interactive:
                 season = input_positive_number('Enter season')
                 start_episode = input_positive_number('Enter start episode')
-            return_code = rename_tv_show_files(tv_show_path, season, start_episode, args.interactive)
+            with LogsTee(logs_filename) as tee:
+                return_code = rename_tv_show_files(tv_show_path, season, start_episode, args.interactive)
             if return_code == 0:
                 processed_tv_shows.append(tv_show_name)
             else:
