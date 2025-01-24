@@ -19,8 +19,10 @@ class LogsTee():
     def write(self, data):
         self.file.write(data)
         self.stdout.write(data)
+        self.flush()
 
     def flush(self):
+        self.stdout.flush()
         self.file.flush()
 
 def get_logs_filename():
