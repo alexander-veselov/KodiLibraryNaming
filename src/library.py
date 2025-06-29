@@ -35,6 +35,8 @@ def main(args):
     logs_filename = os.path.join(logs_path, get_logs_filename())
     cache = read_cache(app_folder_path)
     tv_shows_path = os.path.normpath(os.path.join(args.library_path, TV_SHOWS_FOLDER))
+    if not os.path.exists(tv_shows_path):
+        os.makedirs(tv_shows_path)
     tv_show_paths = list_directories(tv_shows_path)
     invalid_tv_shows = list(filter(lambda x: not is_properly_named(x), tv_show_paths))
     if len(invalid_tv_shows) != 0:
@@ -51,13 +53,10 @@ def main(args):
             if tv_show_name in cache:
                 continue
             print(f' - {tv_show_name}')
-            season = 1
-            start_episode = 1
-            if args.interactive:
-                season = input_positive_number('Enter season')
-                start_episode = input_positive_number('Enter start episode')
+            season = input_positive_number('Enter season')
+            start_episode = input_positive_number('Enter start episode')
             with LogsTee(logs_filename) as tee:
-                return_code = rename_tv_show_files(tv_show_path, season, start_episode, args.interactive)
+                return_code = rename_tv_show_files(tv_show_path, season, start_episode, args.skip_confirmation)
             if return_code == 0:
                 processed_tv_shows.append(tv_show_name)
             else:
@@ -73,6 +72,6 @@ if __name__ == '__main__':
         description='Unifies TV series files for Kodi'
     )
     parser.add_argument('--library_path', type=is_directory, default='Z:/')
-    parser.add_argument('--interactive', action='store_true', help='Allows to enter season and start episode')
+    parser.add_argument('--skip_confirmation', action='store_true', help='Allows to skip file renaming confirmation')
     args = parser.parse_args()
     sys.exit(main(args))

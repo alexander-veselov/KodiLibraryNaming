@@ -68,9 +68,9 @@ def process_encodings(subtitles):
             for file, encoding in encodings.items():
                 change_encoding(file, encoding, 'utf-8')
 
-def rename_files(files, season, start_episode, interactive):
+def rename_files(files, season, start_episode, skip_confirmation):
     if len(files) == 0:
-        return
+        return 
     rename_candidates = dict()
     _, ext = os.path.splitext(files[0])
     season_label = 'S' + str(season)
@@ -84,11 +84,14 @@ def rename_files(files, season, start_episode, interactive):
         return
     for filepath, new_filepath in rename_candidates.items():
         print('"{0}"\t=>\t"{1}"'.format(filepath, new_filepath))
-    if not interactive or input_confirmation('Confirm rename'):
+    rename = True
+    if not skip_confirmation:
+        rename = input_confirmation('Confirm rename')
+    if rename:
         for filepath, new_filepath in rename_candidates.items():
             os.rename(filepath, new_filepath)
 
-def rename_tv_show_files(path, season, start_episode, interactive):
+def rename_tv_show_files(path, season, start_episode, skip_confirmation):
     files = {}
     for file_type in FileType:
         files[file_type] = []
@@ -104,11 +107,11 @@ def rename_tv_show_files(path, season, start_episode, interactive):
             return 1
         process_encodings(files[FileType.SUBTITLES])
     for file_type in FileType:
-        rename_files(files[file_type], season, start_episode, interactive)
+        rename_files(files[file_type], season, start_episode, skip_confirmation)
     return 0
 
 def main(args):
-    return rename_tv_show_files(args.path, args.season, args.start_episode, not args.auto_confirm)
+    return rename_tv_show_files(args.path, args.season, args.start_episode, args.skip_confirmation)
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -117,6 +120,6 @@ if __name__ == '__main__':
     parser.add_argument('--path', type=is_directory, required=True)
     parser.add_argument('--season', type=int, required=False, default=1)
     parser.add_argument('--start_episode', type=int, required=False, default=1)
-    parser.add_argument('--auto_confirm', action='store_true')
+    parser.add_argument('--skip_confirmation', action='store_true')
     args = parser.parse_args()
     sys.exit(main(args))
