@@ -68,9 +68,20 @@ def process_encodings(subtitles):
             for file, encoding in encodings.items():
                 change_encoding(file, encoding, 'utf-8')
 
-def rename_files(files, season, start_episode, skip_confirmation):
+class RenameStatus(Enum):
+    SUCCESS = (0, 'Success')
+    ALREADY_NAMED_PROPERLY = (0, 'Already named properly')
+    ERROR = (1, 'Error')
+    DECLINED_BY_USER = (2, 'Declined by user')
+    NO_FILES_FOUND = (3, 'No files found')
+
+    def __init__(self, code: int, message: str):
+        self.code = code
+        self.message = message
+
+def rename_files(files, season, start_episode, skip_confirmation) -> RenameStatus:
     if len(files) == 0:
-        return 
+        return RenameStatus.NO_FILES_FOUND
     rename_candidates = dict()
     _, ext = os.path.splitext(files[0])
     season_label = 'S' + str(season)
@@ -81,17 +92,17 @@ def rename_files(files, season, start_episode, skip_confirmation):
         if file != new_path:
             rename_candidates[file] = new_path
     if len(rename_candidates) == 0:
-        return
+        return RenameStatus.ALREADY_NAMED_PROPERLY
     for filepath, new_filepath in rename_candidates.items():
         print('"{0}"\t=>\t"{1}"'.format(filepath, new_filepath))
-    rename = True
     if not skip_confirmation:
-        rename = input_confirmation('Confirm rename')
-    if rename:
-        for filepath, new_filepath in rename_candidates.items():
-            os.rename(filepath, new_filepath)
+        if not input_confirmation('Confirm rename'):
+            return RenameStatus.DECLINED_BY_USER
+    for filepath, new_filepath in rename_candidates.items():
+        os.rename(filepath, new_filepath)
+    return RenameStatus.SUCCESS
 
-def rename_tv_show_files(path, season, start_episode, skip_confirmation):
+def rename_tv_show_files(path, season, start_episode, skip_confirmation) -> RenameStatus:
     files = {}
     for file_type in FileType:
         files[file_type] = []
@@ -104,15 +115,22 @@ def rename_tv_show_files(path, season, start_episode, skip_confirmation):
     if subtitles_exist:
         if len(files[FileType.VIDEO]) != len(files[FileType.SUBTITLES]):
             print('The number of videos and subtitles are different')
-            return 1
+            return RenameStatus.ERROR
         process_encodings(files[FileType.SUBTITLES])
     for file_type in FileType:
-        rename_files(files[file_type], season, start_episode, skip_confirmation)
-    return 0
+        status = rename_files(files[file_type], season, start_episode, skip_confirmation)
+        if status != RenameStatus.SUCCESS:
+            if file_type == FileType.SUBTITLES and status == RenameStatus.NO_FILES_FOUND:
+                # Don't error since subtitles are optional
+                continue
+            else:
+                return status
+    return RenameStatus.SUCCESS
 
 def main(args):
-    return rename_tv_show_files(args.path, args.season, args.start_episode, args.skip_confirmation)
-    
+    status = rename_tv_show_files(args.path, args.season, args.start_episode, args.skip_confirmation)
+    return status.code
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Unifies TV series files for Kodi'

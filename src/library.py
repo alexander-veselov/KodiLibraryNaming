@@ -3,8 +3,8 @@ import re
 import sys
 import argparse
 
-from utils import is_directory, list_directories, input_positive_number, get_logs_filename, ensure_exists, LogsTee
-from naming import rename_tv_show_files
+from utils import is_directory, list_directories, input_positive_number, get_logs_filename, ensure_exists, input_confirmation, LogsTee
+from naming import rename_tv_show_files, RenameStatus
 
 TV_SHOWS_FOLDER = 'TV Shows'
 APP_FOLDER = '.library'
@@ -56,15 +56,20 @@ def main(args):
             season = input_positive_number('Enter season')
             start_episode = input_positive_number('Enter start episode')
             with LogsTee(logs_filename) as tee:
-                return_code = rename_tv_show_files(tv_show_path, season, start_episode, args.skip_confirmation)
-            if return_code == 0:
+                return_status = rename_tv_show_files(tv_show_path, season, start_episode, args.skip_confirmation)
+            if return_status.code == 0:
                 processed_tv_shows.append(tv_show_name)
+                if return_status == RenameStatus.ALREADY_NAMED_PROPERLY:
+                    print(f'{return_status.message}')
             else:
-                print(f'Renaming {tv_show_name} failed')
+                print(f'Renaming {tv_show_name} failed. Reason: {return_status.message}')
+                if input_confirmation('Mark as processed?'):
+                    processed_tv_shows.append(tv_show_name)
+                
     if len(processed_tv_shows) != 0:
         update_cache(app_folder_path, processed_tv_shows)
     else:
-        print('No new TV shows')
+        print('No new/processed TV shows')
     return 0
 
 if __name__ == '__main__':
