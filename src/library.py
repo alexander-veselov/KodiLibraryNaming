@@ -24,8 +24,21 @@ def read_cache(app_folder_path):
 
 def update_cache(app_folder_path, tv_shows):
     cache_path = os.path.join(app_folder_path, CACHE_FILE)
-    with open(cache_path, 'a+') as f:
-        f.writelines(line + '\n' for line in tv_shows)
+    # Ensure file exists
+    if not os.path.exists(cache_path):
+        open(cache_path, 'a').close()
+    # Check if the file ends with a newline
+    needs_newline = False
+    if os.path.getsize(cache_path) > 0:
+        with open(cache_path, 'rb') as f:
+            f.seek(-1, os.SEEK_END)
+            last_byte = f.read(1)
+            if last_byte != b'\n':
+                needs_newline = True
+    with open(cache_path, 'a', encoding='utf-8') as f:
+        if needs_newline:
+            f.write('\n')
+        f.write('\n'.join(tv_shows))
 
 def main(args):
     app_folder_path = os.path.join(args.library_path, APP_FOLDER)
