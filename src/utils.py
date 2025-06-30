@@ -62,3 +62,14 @@ def input_positive_number(message):
 def ensure_exists(path):
     if not os.path.exists(path):
         os.mkdir(path)
+
+def extract_year(date_str):
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        return dt.year
+    except:
+        print(f'Failed to extract year from "{date_str}"')
+        return input_positive_number("Input year")
+
+def sanitize_filename(name):
+    return re.sub(r'[<>:"/\\|?*]', '', name)

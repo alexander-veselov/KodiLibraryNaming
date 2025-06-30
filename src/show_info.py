@@ -2,6 +2,7 @@ import argparse
 import requests
 import sys
 from urllib.parse import urlencode
+from utils import input_positive_number
 
 BASE_URL = 'https://api.themoviedb.org/3/{}'
 SEARCH_SHOW_URL = BASE_URL.format('search/tv')
@@ -38,28 +39,40 @@ def load_epsides_info(show_id):
         episode_list.extend(season.get('episodes', []))
     return episode_list
 
-def main(args):
-    response = search_show(args.name, args.year)
+def spoiler_episode_name(episode_name):
+    if len(episode_name) <= 4:
+        return '*' * len(episode_name)
+    obfuscated_name = ' '.join('*' * len(word) for word in episode_name[2:-2].split())
+    return f'{episode_name[:2]}{obfuscated_name}{episode_name[-2:]}'
+
+def search_show_interactive(name, year=0, spoiler_episode_names=False):
+    response = search_show(name, year)
     results = response['results']
     results_count = len(results)
     if results_count == 0:
         print('No results found')
+        return None, None
     else:
         show_index = 0
-        if results_count != 1:
-            print('Several results found:')
-            for i, result in enumerate(results):
-                print('{}. {}'.format(i + 1, result['name']))
-            show_index = int(input('Enter show number: ')) - 1
-        show = response['results'][show_index]
+        print('Results:')
+        for i, result in enumerate(results):
+            print('{}. {} ({}) [{}..]'.format(i + 1, result['name'], result['first_air_date'][:4], ' '.join(result['overview'].split()[:10])))
+        show_index = input_positive_number('Enter show number: ') - 1
+        show = results[show_index]
         episodes = load_epsides_info(show['id'])
         for episode in episodes:
             episode_name = episode['name']
+            if spoiler_episode_names:
+                episode_name = spoiler_episode_name(episode_name)
             episode_number = episode['episode_number']
             season_number = episode['season_number']
             print('S{}E{}: {}'.format(season_number, episode_number, episode_name))
+        return show['name'], show['first_air_date']
+
+def main(args):
+    search_show_interactive(args.name, args.year)
     return 0
-    
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Shows series information from TBDB'

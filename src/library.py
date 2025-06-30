@@ -4,7 +4,7 @@ import sys
 import argparse
 
 from utils import is_directory, list_directories, input_positive_number, get_logs_filename, ensure_exists, input_confirmation, LogsTee
-from naming import rename_tv_show_files, RenameStatus
+from naming import rename_tv_show_folder, rename_tv_show_files, RenameStatus
 
 TV_SHOWS_FOLDER = 'TV Shows'
 APP_FOLDER = '.library'
@@ -22,7 +22,7 @@ def read_cache(app_folder_path):
     with open(cache_path, 'r') as f:
         return set(line.strip() for line in f.readlines())
 
-def update_cache(app_folder_path, tv_shows):
+def update_cache(app_folder_path, tv_show):
     cache_path = os.path.join(app_folder_path, CACHE_FILE)
     # Ensure file exists
     if not os.path.exists(cache_path):
@@ -38,7 +38,7 @@ def update_cache(app_folder_path, tv_shows):
     with open(cache_path, 'a', encoding='utf-8') as f:
         if needs_newline:
             f.write('\n')
-        f.write('\n'.join(tv_shows))
+        f.write(tv_show)
 
 def main(args):
     app_folder_path = os.path.join(args.library_path, APP_FOLDER)
@@ -51,38 +51,37 @@ def main(args):
     if not os.path.exists(tv_shows_path):
         os.makedirs(tv_shows_path)
     tv_show_paths = list_directories(tv_shows_path)
-    invalid_tv_shows = list(filter(lambda x: not is_properly_named(x), tv_show_paths))
-    if len(invalid_tv_shows) != 0:
-        print('[Invalid TV show names]')
-        for invalid_tv_show in invalid_tv_shows:
-            print(f' - {os.path.basename(invalid_tv_show)}')
-        print()
-    valid_tv_shows = list(filter(is_properly_named, tv_show_paths))
     processed_tv_shows = []
-    if len(valid_tv_shows) != 0:
+    if len(tv_show_paths) != 0:
         print('[TV shows]')
-        for tv_show_path in valid_tv_shows:
+        for tv_show_path in tv_show_paths:
             tv_show_name = os.path.basename(tv_show_path)
             if tv_show_name in cache:
                 continue
             print(f' - {tv_show_name}')
+            if not is_properly_named(tv_show_path):
+                print(f'Wrong TV show name')
+                tv_show_path = rename_tv_show_folder(tv_show_path)
+                tv_show_name = os.path.basename(tv_show_path)
             season = input_positive_number('Enter season')
             start_episode = input_positive_number('Enter start episode')
+            processed = False
             with LogsTee(logs_filename) as tee:
                 return_status = rename_tv_show_files(tv_show_path, season, start_episode, args.skip_confirmation)
             if return_status.code == 0:
-                processed_tv_shows.append(tv_show_name)
+                processed = True
                 if return_status == RenameStatus.ALREADY_NAMED_PROPERLY:
                     print(f'{return_status.message}')
             else:
                 print(f'Renaming {tv_show_name} failed. Reason: {return_status.message}')
-                if input_confirmation('Mark as processed?'):
-                    processed_tv_shows.append(tv_show_name)
+                processed = input_confirmation('Mark as processed?')
+            if processed:
+                processed_tv_shows.append(tv_show_name)
+                update_cache(app_folder_path, tv_show_name)
                 
-    if len(processed_tv_shows) != 0:
-        update_cache(app_folder_path, processed_tv_shows)
-    else:
+    if len(processed_tv_shows) == 0:
         print('No new/processed TV shows')
+
     return 0
 
 if __name__ == '__main__':

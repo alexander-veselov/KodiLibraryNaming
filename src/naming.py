@@ -5,7 +5,8 @@ import codecs
 import chardet
 
 from enum import Enum
-from utils import list_files, is_directory, natural_keys, input_confirmation
+from show_info import search_show_interactive
+from utils import list_files, is_directory, natural_keys, input_confirmation, extract_year, sanitize_filename
     
 class FileType(Enum):
     VIDEO = 0
@@ -126,6 +127,27 @@ def rename_tv_show_files(path, season, start_episode, skip_confirmation) -> Rena
             else:
                 return status
     return RenameStatus.SUCCESS
+
+def build_tv_show_path(dirname, tv_show_name, tv_show_year):
+    tv_show_filename = f'{tv_show_name} ({extract_year(tv_show_year)})'
+    return os.path.join(dirname, sanitize_filename(tv_show_filename))
+
+def rename_tv_show_folder(tv_show_path):
+    tv_show_name = os.path.basename(tv_show_path)
+    while True:
+        if tv_show_name != '':
+            print(f'Searching for "{tv_show_name}":')
+            tv_show_name, tv_show_year = search_show_interactive(tv_show_name, spoiler_episode_names=True)
+        if tv_show_name is None or tv_show_name == '':
+            tv_show_name = input('Enter new search term: ')
+            continue
+        new_tv_show_path = build_tv_show_path(os.path.dirname(tv_show_path), tv_show_name, tv_show_year)
+        print('"{0}"\t=>\t"{1}"'.format(tv_show_path, new_tv_show_path))
+        if input_confirmation('Confirm rename'):
+            os.rename(tv_show_path, new_tv_show_path)
+            return new_tv_show_path
+        else:
+            tv_show_name = ''
 
 def main(args):
     status = rename_tv_show_files(args.path, args.season, args.start_episode, args.skip_confirmation)
