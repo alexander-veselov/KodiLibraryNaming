@@ -6,7 +6,7 @@ from datetime import datetime
 
 class LogsTee():
     def __init__(self, name, mode='a+'):
-        self.file = open(name, mode)
+        self.file = open(name, mode, encoding='utf-8')
         self.stdout = sys.stdout
     
     def __enter__(self):

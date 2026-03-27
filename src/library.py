@@ -19,14 +19,14 @@ def read_cache(app_folder_path):
     cache_path = os.path.join(app_folder_path, CACHE_FILE)
     if not os.path.exists(cache_path):
         return set()
-    with open(cache_path, 'r') as f:
+    with open(cache_path, 'r', encoding='utf-8') as f:
         return set(line.strip() for line in f.readlines())
 
 def update_cache(app_folder_path, tv_show):
     cache_path = os.path.join(app_folder_path, CACHE_FILE)
     # Ensure file exists
     if not os.path.exists(cache_path):
-        open(cache_path, 'a').close()
+        open(cache_path, 'a', encoding='utf-8').close()
     # Check if the file ends with a newline
     needs_newline = False
     if os.path.getsize(cache_path) > 0:
